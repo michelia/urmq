@@ -220,16 +220,16 @@ correlationId:    可以理解为消息的guid, 可为空  .
 exchange:         交换机, 可为空 则使用默认的r.sendExchange  .
 */
 func (r *RMQ) Publish(slog *zerolog.Logger, body []byte, key, correlationId, exchange string) {
-	ex := r.config.SendExchange
-	if exchange != "" {
-		ex = exchange
+	if exchange == "" {
+		// 使用默认的发送交换机
+		exchange = r.config.SendExchange
 	}
 nextPublish:
 	err := r.channel.Publish(
-		ex,    // exchange publish to an exchange
-		key,   // routingKey routing to 0 or more queues, fanout 忽略 routingKey
-		false, // mandatory
-		false, // immediate
+		exchange, // exchange publish to an exchange
+		key,      // routingKey routing to 0 or more queues, fanout 忽略 routingKey
+		false,    // mandatory
+		false,    // immediate
 		amqp.Publishing{
 			ContentType:   "application/json",
 			CorrelationId: correlationId,
