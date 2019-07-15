@@ -53,29 +53,29 @@ func NewRMQ(slog *zerolog.Logger, config Config) *RMQ {
 	return &r
 }
 
-func (r *RMQ) connect() {
+func (r *RMQ) Connect() {
 	var err error
 	r.conn, err = amqp.Dial(r.config.Url)
 	if err != nil {
 		r.slog.Error().Caller().Err(err).Msg("amqp.Dial error")
 		time.Sleep(5 * time.Second)
-		r.connect()
+		r.Connect()
 		return
 	}
 	r.channel, err = r.conn.Channel()
 	if err != nil {
 		r.slog.Error().Caller().Err(err).Msg("r.conn.Channel error")
 		time.Sleep(5 * time.Second)
-		r.connect()
+		r.Connect()
 		return
 	}
-	go r.reconnect() // 启动重连协程 (注意每次连接后, 都要执行)
+	go r.reConnect() // 启动重连协程 (注意每次连接后, 都要执行)
 	r.slog.Print("rmq connect success")
 	r.init() // 每次连接后需要执行的操作 声明 队列 交换机 执行绑定
 }
 
 // reconnect 连接异常关闭的时候重连
-func (r *RMQ) reconnect() {
+func (r *RMQ) reConnect() {
 	// 注册一个监听关闭连接的事件
 	err := <-r.conn.NotifyClose(make(chan *amqp.Error))
 	if err != nil {
@@ -89,7 +89,7 @@ func (r *RMQ) reconnect() {
 			}
 			r.slog.Print("wait the channel consumer and success")
 		}
-		r.connect()
+		r.Connect()
 		r.slog.Print("rmq reconnect success")
 		r.isReconnect <- errors.New("reconnect")
 		return

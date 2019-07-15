@@ -23,7 +23,7 @@ func TestNew(t *testing.T) {
 		Logger()
 	rmq := NewRMQ(&slog, c)
 	go func() {
-		rmq.connect() // 连接
+		rmq.Connect() // 连接
 		rmq.Handle(func(msgChan <-chan amqp.Delivery) {
 			slog.Print("consumer")
 			for d := range msgChan {
