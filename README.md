@@ -21,21 +21,34 @@ import (
 )
 
 func main() {
+	c := Config{
+		Url:              "amqp://guest:guest@127.0.0.1:5672",
+		Exchange:         "test",
+		Queue:            "test",
+		BindKeys:         []string{"test.#"},
+		SendExchange:     "test_send",
+		SendExchangeKind: "fanout",
+	}
 	// 带session的log
 	slog := zlog.With().
-		Str("service", "xxx").
+		Str("service", "rmq_test").
 		Logger()
-
-	// 构建rmq
-	rmq := urmq.NewRMQ(&slog,
-		"amqp://guest:guest@127.0.0.1:5672", // url:              rmq 连接地址.
-		"getExchange",                       // getExchange:      从这个Exchange获取上游过来的消息 .
-		"getQueue",                          // getQueue:         接收上游消息的队列, .
-		nil,                                 // bindKeys:         绑定到接收消息队列 的key 即主题 .
-		"sendExchange",                      // sendExchange:     默认向这个exchange推消息.
-		"fanout",                            // sendExchangeKind: exchange类型.
-	)
-
+	rmq := NewRMQ(&slog, c)
+	go func() {
+		rmq.connect() // 连接
+		rmq.Handle(func(msgChan <-chan amqp.Delivery) {
+			slog.Print("consumer")
+			for d := range msgChan {
+				// 操作接受到的消息d
+				_ = d
+				// ...
+			}
+			slog.Print("consumer all")
+			rmq.Done <- struct{}{}
+		})
+		slog.Print("consumer")
+	}()
+	rmq.Publish(&slog, []byte(`{"msg":"debug"}`), "", "")
 	// 优雅关闭
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc,
@@ -46,31 +59,15 @@ func main() {
 	)
 	go func() {
 		sig := <-sc
+		slog.Print("准备关闭连接")
 		rmq.Close()
 		slog.Fatal().Interface("Signal", sig).Msg("主动关闭退出")
 	}()
-
-	// 向默认的sendExchange发送消息
-	rmq.Publish(&slog, // 带会话的上下问log
-		[]byte("消息body"), // body:           数据体
-		"routingKey",     // key:             主题, 可为空
-		"消息id",           // correlationId:  可以理解为消息的guid, 可为空
-		"",               // exchange:        交换机, 可为空 则使用默认的sendExchange
-	)
-
-	// 接受"getQueue"过来的消息
-	for d := range rmq.MsgChan {
-		// 操作接受到的消息d
-		_ = d
-		// ...
-	}
-	rmq.Done <- nil // 告诉rmq俺处理完了, 可以优雅关闭退出啦
 
 	select{}
 }
 
 ```
-
 
 ### 参考
 - [https://github.com/streadway/amqp/issues/133#issuecomment-102842493]()
