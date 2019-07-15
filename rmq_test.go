@@ -32,7 +32,7 @@ func TestNew(t *testing.T) {
 				// ...
 			}
 			slog.Print("consumer all")
-			rmq.Done <- struct{}{}
+			rmq.Done <- nil
 		})
 		slog.Print("consumer")
 	}()

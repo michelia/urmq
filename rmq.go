@@ -18,7 +18,7 @@ type RMQ struct {
 	msgChan     <-chan amqp.Delivery // 获取getQueue中的消息
 	isReconnect chan error           // 通知consumer连接关闭, 需重新构建consumer
 	config      Config
-	Done        chan struct{}
+	Done        chan error
 	isConsumer  bool // 是否启动consumer
 }
 
@@ -48,7 +48,7 @@ func NewRMQ(slog *zerolog.Logger, config Config) *RMQ {
 		slog:        &sl,
 		isReconnect: make(chan error),
 		config:      config,
-		Done:        make(chan struct{}, config.Threads),
+		Done:        make(chan error, config.Threads),
 	}
 	return &r
 }
