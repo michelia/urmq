@@ -214,22 +214,18 @@ func (r *RMQ) Handle(handler func(deliveries <-chan amqp.Delivery)) {
 /*
 Publish 向exchange中推送消息, 并带有重试机制
 
+slog:             带session的log
 body:             数据体  .
 key:              主题, 可为空  .
 correlationId:    可以理解为消息的guid, 可为空  .
-exchange:         交换机, 可为空 则使用默认的r.sendExchange  .
 */
-func (r *RMQ) Publish(slog *zerolog.Logger, body []byte, key, correlationId, exchange string) {
-	if exchange == "" {
-		// 使用默认的发送交换机
-		exchange = r.config.SendExchange
-	}
+func (r *RMQ) Publish(slog *zerolog.Logger, body []byte, key, correlationId string) {
 nextPublish:
 	err := r.channel.Publish(
-		exchange, // exchange publish to an exchange
-		key,      // routingKey routing to 0 or more queues, fanout 忽略 routingKey
-		false,    // mandatory
-		false,    // immediate
+		r.config.SendExchange, // exchange publish to an exchange
+		key,                   // routingKey routing to 0 or more queues, fanout 忽略 routingKey
+		false,                 // mandatory
+		false,                 // immediate
 		amqp.Publishing{
 			ContentType:   "application/json",
 			CorrelationId: correlationId,
@@ -239,16 +235,21 @@ nextPublish:
 			// Priority:      0,               // 0-9
 		},
 	)
-	switch err {
-	case nil:
-		slog.Info().Msg("push-rmq-success")
-		return
-	case amqp.ErrClosed:
-		slog.Warn().Msg("push-rmq-error-reconnect")
-		time.Sleep(time.Second * 5)
-		goto nextPublish
-	default:
-		slog.Error().Caller().Err(err).Msg("push-rmq-error")
-		return
+	if err != nil {
+		e, ok := err.(*amqp.Error)
+		if !ok {
+			slog.Error().Caller().Err(err).Msg("push-rmq-error, not amqp.Error")
+			return
+		}
+		switch e {
+		case amqp.ErrClosed:
+			slog.Warn().Msg("push-rmq-error-reconnect")
+			time.Sleep(time.Second * 5)
+			goto nextPublish
+		default:
+			slog.Error().Caller().Err(err).Msg("push-rmq-error")
+			return
+		}
 	}
+	slog.Info().Msg("push-rmq-success")
 }

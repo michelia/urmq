@@ -20,20 +20,21 @@ func TestNew(t *testing.T) {
 		Str("service", "rmq_test").
 		Logger()
 	rmq := NewRMQ(&slog, c)
-	rmq.connect() // 连接
-
-	// 接受"getQueue"过来的消息
-	go rmq.Handle(func(msgChan <-chan amqp.Delivery) {
+	go func() {
+		rmq.connect() // 连接
+		
+		rmq.Handle(func(msgChan <-chan amqp.Delivery) {
+			slog.Print("consumer")
+			for d := range msgChan {
+				// 操作接受到的消息d
+				_ = d
+				// ...
+			}
+			slog.Print("consumer all")
+			rmq.Done <- struct{}{}
+		})
 		slog.Print("consumer")
-		for d := range msgChan {
-			// 操作接受到的消息d
-			_ = d
-			// ...
-		}
-		slog.Print("consumer all")
-		rmq.Done <- struct{}{}
-	})
-	slog.Print("consumer")
+	}()
 	time.Sleep(1e9 * 50)
 	slog.Print("准备关闭连接")
 	rmq.Close()

@@ -4,6 +4,8 @@
 
 使用[github.com/rs/zerolog]()操作日志, 每个日志都带有`GUID`, 方便分析异常.
 
+封装成回调风格.
+
 # 样例
 ```go
 package main
@@ -71,5 +73,5 @@ func main() {
 
 
 ### 参考
-[https://github.com/streadway/amqp/issues/133#issuecomment-102842493]()
-[https://github.com/streadway/amqp/blob/master/_examples/simple-consumer/consumer.go]()
+- [https://github.com/streadway/amqp/issues/133#issuecomment-102842493]()
+- [https://github.com/streadway/amqp/blob/master/_examples/simple-consumer/consumer.go]()
