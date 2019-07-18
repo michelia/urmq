@@ -220,36 +220,39 @@ key:              主题, 可为空  .
 correlationId:    可以理解为消息的guid, 可为空  .
 */
 func (r *RMQ) Publish(slog *zerolog.Logger, body []byte, key, correlationId string) {
-nextPublish:
-	err := r.channel.Publish(
-		r.config.SendExchange, // exchange publish to an exchange
-		key,                   // routingKey routing to 0 or more queues, fanout 忽略 routingKey
-		false,                 // mandatory
-		false,                 // immediate
-		amqp.Publishing{
-			ContentType:   "application/json",
-			CorrelationId: correlationId,
-			Body:          body,
-			DeliveryMode:  amqp.Persistent, // 0/1=non-persistent, 2=persistent
-			// Headers:       amqp.Table{},
-			// Priority:      0,               // 0-9
-		},
-	)
-	if err != nil {
-		e, ok := err.(*amqp.Error)
-		if !ok {
-			slog.Error().Caller().Err(err).Msg("push-rmq-error, not amqp.Error")
-			return
+	// 重试 60次, 5分钟
+	for i := 0; i < 60; i++ {
+		err := r.channel.Publish(
+			r.config.SendExchange, // exchange publish to an exchange
+			key,                   // routingKey routing to 0 or more queues, fanout 忽略 routingKey
+			false,                 // mandatory
+			false,                 // immediate
+			amqp.Publishing{
+				ContentType:   "application/json",
+				CorrelationId: correlationId,
+				Body:          body,
+				DeliveryMode:  amqp.Persistent, // 0/1=non-persistent, 2=persistent
+				// Headers:       amqp.Table{},
+				// Priority:      0,               // 0-9
+			},
+		)
+		if err != nil {
+			e, ok := err.(*amqp.Error)
+			if !ok {
+				slog.Error().Caller().Err(err).Msg("push-rmq-error, not amqp.Error")
+				return
+			}
+			switch e {
+			case amqp.ErrClosed:
+				slog.Warn().Msg("push-rmq-error-reconnect")
+				time.Sleep(time.Second * 5)
+				continue
+			default:
+				slog.Error().Caller().Err(err).Msg("push-rmq-error, other error")
+				return
+			}
 		}
-		switch e {
-		case amqp.ErrClosed:
-			slog.Warn().Msg("push-rmq-error-reconnect")
-			time.Sleep(time.Second * 5)
-			goto nextPublish
-		default:
-			slog.Error().Caller().Err(err).Msg("push-rmq-error")
-			return
-		}
+		slog.Info().Msg("push-rmq-success")
+		return
 	}
-	slog.Info().Msg("push-rmq-success")
 }
