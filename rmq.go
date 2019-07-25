@@ -6,12 +6,14 @@ import (
 	"errors"
 	"time"
 
-	"github.com/rs/zerolog"
+	"github.com/michelia/ulog"
 	"github.com/streadway/amqp"
 )
 
+type Delivery = amqp.Delivery
+
 type RMQ struct {
-	slog        *zerolog.Logger
+	slog        ulog.Logger
 	conn        *amqp.Connection
 	channel     *amqp.Channel
 	ctag        string               // ConsumerTag 在r.channel.Cancel中使用的, 这里取GetQueue的值
@@ -39,7 +41,7 @@ NewRMQ 创建操作RMQ消息的对象
 slog: 带session的log
 config: 构建rmq需要的配置
 */
-func NewRMQ(slog *zerolog.Logger, config Config) *RMQ {
+func NewRMQ(slog ulog.Logger, config Config) *RMQ {
 	sl := slog.With().Str("action", "rmq").Logger()
 	if config.Threads == 0 {
 		config.Threads = 1
@@ -219,7 +221,7 @@ body:             数据体  .
 key:              主题, 可为空  .
 correlationId:    可以理解为消息的guid, 可为空  .
 */
-func (r *RMQ) Publish(slog *zerolog.Logger, body []byte, key, correlationId string) {
+func (r *RMQ) Publish(slog ulog.Logger, body []byte, key, correlationId string) {
 	// 重试 60次, 5分钟
 	for i := 0; i < 60; i++ {
 		err := r.channel.Publish(
