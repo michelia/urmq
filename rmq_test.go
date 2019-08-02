@@ -32,7 +32,6 @@ func TestNew(t *testing.T) {
 				// ...
 			}
 			slog.Print("consumer all")
-			rmq.Done <- nil
 		})
 		slog.Print("consumer")
 	}()

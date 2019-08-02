@@ -20,8 +20,6 @@ type RMQ struct {
 	msgChan     <-chan amqp.Delivery // 获取getQueue中的消息
 	isReconnect chan error           // 通知consumer连接关闭, 需重新构建consumer
 	config      Config
-	Done        chan error
-	isConsumer  bool // 是否启动consumer
 }
 
 // Config 构建rmq需要的配置
@@ -50,7 +48,6 @@ func NewRMQ(slog ulog.Logger, config Config) *RMQ {
 		slog:        &sl,
 		isReconnect: make(chan error),
 		config:      config,
-		Done:        make(chan error, config.Threads),
 	}
 	return &r
 }
@@ -85,12 +82,6 @@ func (r *RMQ) reConnect() {
 		r.slog.Error().Err(err).Msg("rmq conn error, wait for 2s and reconnet")
 		time.Sleep(1e9 * 2)
 		r.channel.Close()
-		if r.isConsumer {
-			for i := 0; i < r.config.Threads; i++ {
-				<-r.Done
-			}
-			r.slog.Print("wait the channel consumer and success")
-		}
 		r.Connect()
 		r.slog.Print("rmq reconnect success")
 		r.isReconnect <- errors.New("reconnect")
@@ -185,17 +176,11 @@ func (r *RMQ) Close() {
 		r.slog.Error().Caller().Err(err).Msg("AMQP connection close error")
 	}
 	r.slog.Print("closed rmq closed , wait for msg")
-	if r.isConsumer {
-		for i := 0; i < r.config.Threads; i++ {
-			<-r.Done
-		}
-	}
 	r.isReconnect <- nil
 	r.slog.Print("Successful close rmq")
 }
 
 func (r *RMQ) Handle(handler func(deliveries <-chan amqp.Delivery)) {
-	r.isConsumer = true
 	for {
 		for i := 0; i < r.config.Threads; i++ {
 			go handler(r.msgChan)

@@ -44,7 +44,6 @@ func main() {
 				// ...
 			}
 			slog.Print("consumer all")
-			rmq.Done <- nil
 		})
 		slog.Print("consumer")
 	}()
