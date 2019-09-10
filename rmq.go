@@ -239,7 +239,7 @@ func (r *RMQ) Publish(slog ulog.Logger, body []byte, key, correlationId string) 
 				return
 			}
 		}
-		slog.Info().Msg("push-rmq-success")
+		slog.Print("push-rmq-success")
 		return
 	}
 }
