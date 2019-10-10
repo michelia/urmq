@@ -79,7 +79,7 @@ func (r *RMQ) reConnect() {
 	err := <-r.conn.NotifyClose(make(chan *amqp.Error))
 	if err != nil {
 		// 如果不为nil, 则属于异常异常事件
-		r.slog.Error().Err(err).Msg("rmq conn error, wait for 2s and reconnet")
+		r.slog.Error().Err(err).Caller().Msg("rmq conn error, wait for 2s and reconnet")
 		time.Sleep(1e9 * 2)
 		r.channel.Close()
 		r.Connect()
@@ -108,7 +108,7 @@ nextReconnet:
 			nil,            // arguments
 		)
 		if err != nil {
-			r.slog.Error().Err(err).Msg("QueueDeclare error")
+			r.slog.Error().Err(err).Caller().Msg("QueueDeclare error")
 			time.Sleep(time.Second * 5)
 			goto nextReconnet
 		}
@@ -137,7 +137,7 @@ nextReconnet:
 					false,             // noWait
 					nil,               // arguments
 				); err != nil {
-					r.slog.Error().Err(err).Msg("QueueBind error")
+					r.slog.Error().Err(err).Caller().Msg("QueueBind error")
 					time.Sleep(time.Second * 5)
 					goto nextReconnet
 				}
@@ -156,7 +156,7 @@ nextReconnet:
 			nil,                       // arguments)
 		)
 		if err != nil {
-			r.slog.Error().Err(err).Msg("ExchangeDeclare error")
+			r.slog.Error().Err(err).Caller().Msg("ExchangeDeclare error")
 			time.Sleep(time.Second * 5)
 			goto nextReconnet
 		}
@@ -189,7 +189,7 @@ func (r *RMQ) Handle(handler func(deliveries <-chan amqp.Delivery)) {
 		// Go into reconnect loop when
 		// r.isReconnect is passed non nil values
 		if err := <-r.isReconnect; err != nil {
-			r.slog.Error().Err(err).Msg("重连需重新构建consumer")
+			r.slog.Error().Err(err).Caller().Msg("重连需重新构建consumer")
 			continue
 		} else {
 			r.slog.Print("consumer close connect")
