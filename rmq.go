@@ -178,7 +178,7 @@ func (r *RMQ) Close() {
 		r.slog.Error().Caller().Err(err).Msg("AMQP connection close error")
 	}
 	r.slog.Print("closed rmq closed , wait for msg")
-	r.isReconnect <- nil
+	close(r.isReconnect)
 	r.slog.Print("Successful close rmq")
 }
 
