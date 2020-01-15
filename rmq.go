@@ -166,8 +166,10 @@ nextReconnet:
 
 // Close 优雅的关闭rmq, 这样不丢失消息
 func (r *RMQ) Close() {
-	if err := r.channel.Cancel(r.ctag, true); err != nil {
-		r.slog.Error().Caller().Err(err).Msg("Consumer cancel failed")
+	if r.ctag != "" {
+		if err := r.channel.Cancel(r.ctag, true); err != nil {
+			r.slog.Error().Caller().Err(err).Msg("Consumer cancel failed")
+		}
 	}
 	if err := r.channel.Close(); err != nil {
 		r.slog.Error().Caller().Err(err).Msg("channel close failed")
