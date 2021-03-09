@@ -1,8 +1,8 @@
 # urmq(util of RabbitMQ)
 
-使用 [github.com/streadway/amqp]()操作MQ消息, 包括了重连及重发.
+使用 [https://github.com/streadway/amqp]()操作MQ消息, 包括了重连及重发.
 
-使用[github.com/rs/zerolog]()操作日志, 每个日志都带有`GUID`, 方便分析异常.
+使用[https://github.com/rs/zerolog]()操作日志, 每个日志都带有`GUID`, 方便分析异常.
 
 封装成回调风格.
 
